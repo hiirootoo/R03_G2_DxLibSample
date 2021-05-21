@@ -1,6 +1,7 @@
 //ヘッダーファイルの読み込み
 #include "DxLib.h"		//DxLibを使うときは必要
 #include "keyboard.h"	//キーボードの処理
+#include "FPS.h"		//FPSの処理
 
 //マクロ定義
 #define GAME_TITLE "ゲームタイトル"		//ゲームタイトル
@@ -71,13 +72,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	SetOutApplicationLogValidFlag(FALSE);				//Log,txtを出力しない
 	ChangeWindowMode(TRUE);								//ウィンドウモードに設定
 	SetMainWindowText(GAME_TITLE);						//ウィンドウのタイトルの文字
-	SetWindowStyleMode(GAME_WINDOW_BAR);								//ウィンドウバーの状態
+	SetWindowStyleMode(GAME_WINDOW_BAR);				//ウィンドウバーの状態
 	SetGraphMode(GAME_WIDTH, GAME_HEIGHT, GAME_COLOR);	//ウィンドウの解像度の設定
 	SetWindowSize(GAME_WIDTH, GAME_HEIGHT);				//ウィンドウの大きさを設定
 	SetBackgroundColor(255, 255, 255);					//デフォルトの背景の色
 	SetWaitVSyncFlag(TRUE);								//ディスプレイの垂直同期を有効にする
 	SetWindowIconID(GAME_ICON_ID);						//アイコンファイルを読込
-	SetAlwaysRunFlag(TRUE);
+	SetAlwaysRunFlag(TRUE);								//ウィンドウをずっとアクティブにする
 
 
 	if (DxLib_Init() == -1)		// ＤＸライブラリ初期化処理
@@ -106,6 +107,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		//キーボード入力の更新
 		AllKeyUpdate();
+
+		//FPS値の更新
+		FPSUpdate();
 
 		//ESCキーで強制終了
 		if (KeyClick(KEY_INPUT_ESCAPE) == TRUE) { break; }
@@ -165,6 +169,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 
 		DrawCircle(X, Y, radius, GetColor(255, 255, 0), TRUE);
+
+		//FPS値を描画
+		FPSDraw();
+
+		//FPS値を待つ
+		FPSWait();
+
 
 		ScreenFlip();	//ダブルバッファリングした画面を描画
 	}
