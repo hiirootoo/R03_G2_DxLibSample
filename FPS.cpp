@@ -103,7 +103,7 @@ VOID FPSWait(VOID)
 			//‘Ò‚ÂŽžŠÔ@‚P‚Oƒ~ƒŠ<=‚P•b/‚U‚OFPS‚P‚UD‚U‚U‚U‚Uƒ~ƒŠ@‚à‚¤­‚µ‘‚­‚Å‚«‚é
 			if (waitTime > 0 && waitTime <= 1000.0f / fps.Value)
 			{
-				fps.Count++;
+				fps.Value++;
 			}
 			else
 			{
