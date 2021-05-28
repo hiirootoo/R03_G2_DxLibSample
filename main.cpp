@@ -22,10 +22,27 @@ struct CHARACTOR
 	BOOL IsDraw = FALSE;	//画像が描画できる？
 };
 
+//動画の構造体
+struct MOVIE
+{
+	int handle = -1;		//動画のハンドル
+	char path[255];			//動画の場所
+
+	int x;					//X位置
+	int y;					//Y位置
+	int width;				//幅
+	int height;				//高さ
+
+	int Volume = 255;		//ボリューム（最小）0～255（最大）
+};
+
 //シーンを管理する変数
 GAME_SCENE GameScene;		//現在のゲームシーン
 GAME_SCENE OldGameScene;	//前回のゲームシーン
 GAME_SCENE NextGameScene;	//次のゲームシーン
+
+//プレイ背景の動画
+MOVIE playMovie;
 
 //プレイヤー
 CHARACTOR player;
@@ -73,6 +90,8 @@ VOID ChangeScene(GAME_SCENE scene);		//シーンを切り替え
 VOID CollUpdatePlayer(CHARACTOR* chara);		//当たり判定の領域を更新
 VOID CollUpdate(CHARACTOR* chara);				//当たり判定
 
+BOOL Collision(RECT player, RECT Goal);
+
 // プログラムは WinMain から始まります
 //Windowsのプログラミング法＝(WinAPI)で動いている！
 //DxLibは、DirectXという、ゲームプログラミングをかんたんに使える仕組み
@@ -103,6 +122,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	//ゲーム全体の初期化
 
+	//プレイ動画の背景を読み込み
+	strcpyDx(playMovie.path, ".\\Movie\\PlayMovie.mp4");	//パスのコピー
+	playMovie.handle = LoadGraph(playMovie.path);	//動画を読み込み
+
+	//画像が読み込まれなかったときは、エラー（-1）が入る
+	if (playMovie.handle == -1)
+	{
+		MessageBox(
+			GetMainWindowHandle(),		//メインのウィンドウハンドル
+			playMovie.path,				//メッセージ本文
+			"画像読み込みエラー！",		//メッセージタイトル
+			MB_OK						//ボタン
+		);
+
+		DxLib_End();	//強制終了
+		return -1;		//エラー終了
+	}
+
+	//動画の幅と高さを取得
+	GetGraphSize(playMovie.handle, &playMovie.width, &playMovie.height);
+
 	//プレイヤーの画像を読み込み
 	strcpyDx(player.path, ".\\image\\Player.png");		//パスのコピー
 	player.handle = LoadGraph(player.path);	//画像を読み込み
@@ -124,14 +164,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	//画像の幅と高さを取得
 	GetGraphSize(player.handle, &player.width, &player.height);
 
-	//当たり判定を更新する
-	CollUpdatePlayer(&player);		//プレイヤーの当たり判定のアドレス
-
 	//プレイヤーを初期化
-	player.x = GAME_WIDTH / 2 - player.width / 2;		//中央寄せ
+	player.x = 0;		//中央寄せ
 	player.y = GAME_HEIGHT / 2 - player.height / 2;		//中央寄せ
 	player.speed = 500;
 	player.IsDraw = TRUE;	//描画できる！
+
+	//当たり判定を更新する
+	CollUpdatePlayer(&player);		//プレイヤーの当たり判定のアドレス
 
 	//ゴールの画像を読み込み
 	strcpyDx(Goal.path, ".\\image\\goal.png");		//パスのコピー
@@ -154,14 +194,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	//画像の幅と高さを取得
 	GetGraphSize(Goal.handle, &Goal.width, &Goal.height);
 
-	//当たり判定を更新する
-	CollUpdate(&Goal);		//ゴールの当たり判定のアドレス
-
 	//ゴールを初期化
-	Goal.x = GAME_WIDTH / 2 - player.width / 2;		//中央寄せ
-	Goal.y = GAME_HEIGHT / 2 - player.height / 2;		//中央寄せ
+	Goal.x = GAME_WIDTH - Goal.width;		//中央寄せ
+	Goal.y = 0;		//中央寄せ
 	Goal.speed = 500;
 	Goal.IsDraw = TRUE;	//描画できる！
+
+	//当たり判定を更新する
+	CollUpdate(&Goal);		//ゴールの当たり判定のアドレス
 
 	//無限ループ
 	while (1)
@@ -226,8 +266,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 
 	//終わるときの処理
-	DeleteGraph(player.handle);	//画像をメモリ上から削除
-	DeleteGraph(Goal.handle);	//画像をメモリ上から削除
+	DeleteGraph(playMovie.handle);	//画像をメモリから削除
+	DeleteGraph(player.handle);		//画像をメモリ上から削除
+	DeleteGraph(Goal.handle);		//画像をメモリ上から削除
 
 		
 	DxLib_End();				// ＤＸライブラリ使用の終了処理
@@ -307,6 +348,12 @@ VOID PlayProc(VOID)
 		ChangeScene(GAME_SCENE_END);
 	}
 
+	//プレイヤーがゴールに当たったときは
+	if (Collision(player.coll,Goal.coll) == TRUE) {
+		//エンド画面に切り替え
+		ChangeScene(GAME_SCENE_END);
+	}
+
 	//プレイヤーの操作
 	if (KeyDown(KEY_INPUT_UP) == TRUE)
 	{
@@ -329,6 +376,9 @@ VOID PlayProc(VOID)
 	//当たり判定を更新する
 	CollUpdatePlayer(&player);
 
+	//ゴールの当たり判定を更新する
+	CollUpdate(&Goal);
+
 	return;
 }
 
@@ -337,6 +387,18 @@ VOID PlayProc(VOID)
 /// </summary>
 VOID PlayDraw(VOID)
 {
+	//動画背景を描画
+
+	//もし、動画が再生されていないとき
+	if (GetMovieStateToGraph(playMovie.handle) == 0)
+	{
+		//再生する
+		SeekMovieToGraph(playMovie.handle, 0);	//シークバーを最初に戻す
+		PlayMovieToGraph(playMovie.handle);		//動画を再生
+	}
+	//動画を描画（画像を引き延ばす）
+	DrawExtendGraph(0, 0, GAME_WIDTH, GAME_HEIGHT, playMovie.handle, TRUE);
+
 	//プレイヤーを描画
 	if (player.IsDraw == TRUE)
 	{
@@ -533,4 +595,24 @@ VOID CollUpdate(CHARACTOR* chara)
 	chara->coll.bottom = chara->y + chara->height;
 
 	return;
+}
+
+/// <summary>
+/// 矩形と矩形の当たり判定
+/// </summary>
+/// <param name="player">矩形A</param>
+/// <param name="Goal">矩形B</param>
+/// <returns>当たったらTRUE/当たらないならFALSE</returns>
+BOOL Collision(RECT player,RECT Goal) {
+	if (player.left < Goal.right
+		&&player.right > Goal.left
+		&&player.top < Goal.bottom
+		&&player.bottom > Goal.top) 
+	{
+			return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
 }
