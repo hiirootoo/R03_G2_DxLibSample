@@ -65,6 +65,9 @@ AUDIO TitleBGM;
 AUDIO PlayBGM;
 AUDIO EndBGM;
 
+//効果音
+AUDIO PlayerSE;
+
 //画面の切替え
 BOOL IsFadeOut = FALSE;		//フェードアウト
 BOOL IsFadeIn = FALSE;		//フェードイン
@@ -216,6 +219,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	DeleteGraph(player.handle);		//画像をメモリ上から削除
 	DeleteGraph(Goal.handle);		//画像をメモリ上から削除
 
+	DeleteSoundMem(TitleBGM.handle);	//音楽をメモリ上から削除
+	DeleteSoundMem(PlayBGM.handle);		//音楽をメモリ上から削除
+	DeleteSoundMem(EndBGM.handle);		//音楽をメモリ上から削除
+
+	DeleteSoundMem(PlayerSE.handle);	//音楽をメモリ上から削除
 		
 	DxLib_End();				// ＤＸライブラリ使用の終了処理
 
@@ -350,6 +358,26 @@ BOOL GameLoad() {
 
 	EndBGM.playType = DX_PLAYTYPE_LOOP;	//音楽をループさせる
 	EndBGM.Volume = 255;					//MAXが255
+
+	//音楽の読み込み
+	strcpyDx(PlayerSE.path, ".\\Audio\\PlayerSE.mp3");
+	PlayerSE.handle = LoadSoundMem(PlayerSE.path);
+
+	//音楽が読み込めなかったときは、エラー（ー１）が入る
+	if (PlayerSE.handle == -1)
+	{
+		MessageBox(
+			GetMainWindowHandle(),	//メインのウィンドウハンドル
+			PlayerSE.path,			//メッセージ本文
+			"音楽読み込みエラー!",					//メッセージタイトル
+			MB_OK					//ボタン
+		);
+
+		return FALSE;		//読み込み失敗
+	}
+
+	PlayerSE.playType = DX_PLAYTYPE_BACK;	//
+	PlayerSE.Volume = 255;					//MAXが255
 
 	return TRUE;	//全て読み込めた！
 }
@@ -492,19 +520,43 @@ VOID PlayProc(VOID)
 	if (KeyDown(KEY_INPUT_UP) == TRUE)
 	{
 		player.y -= player.speed * fps.DeltaTime;
+
+		//動くときの効果音を追加
+		if (CheckSoundMem(PlayerSE.handle) == 0)
+		{
+			PlaySoundMem(PlayerSE.handle, PlayerSE.playType);
+		}
 	}
 	if (KeyDown(KEY_INPUT_DOWN) == TRUE)
 	{
 		player.y += player.speed * fps.DeltaTime;
+
+		//動くときの効果音を追加
+		if (CheckSoundMem(PlayerSE.handle) == 0)
+		{
+			PlaySoundMem(PlayerSE.handle, PlayerSE.playType);
+		}
 	}
 	
 	if (KeyDown(KEY_INPUT_LEFT) == TRUE)
 	{
 		player.x -= player.speed * fps.DeltaTime;
+
+		//動くときの効果音を追加
+		if (CheckSoundMem(PlayerSE.handle) == 0)
+		{
+			PlaySoundMem(PlayerSE.handle, PlayerSE.playType);
+		}
 	}
 	if (KeyDown(KEY_INPUT_RIGHT) == TRUE)
 	{
 		player.x += player.speed * fps.DeltaTime;
+		
+		//動くときの効果音を追加
+		if (CheckSoundMem(PlayerSE.handle) == 0)
+		{
+			PlaySoundMem(PlayerSE.handle, PlayerSE.playType);
+		}
 	}
 
 	//当たり判定を更新する
