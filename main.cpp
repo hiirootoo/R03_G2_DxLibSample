@@ -67,15 +67,20 @@ CHARACTOR player;
 //ゴール
 CHARACTOR Goal;
 
+//ゲームオーバー
+CHARACTOR ENEMY;
+
 //画像を読み込む
 IMAGE TitleLogo;	//タイトルロゴ
 IMAGE TitleEnter;	//エンターキーを押してね
 IMAGE EndClear;		//クリアロゴ
+IMAGE EndOver;		//ゲームオーバーロゴ
 
 //音楽
 AUDIO TitleBGM;
 AUDIO PlayBGM;
 AUDIO EndBGM;
+AUDIO GameOverBGM;
 
 //効果音
 AUDIO playerSE;
@@ -114,6 +119,10 @@ VOID PlayDraw(VOID);		//プレイ画面(描画)
 VOID End(VOID);				//エンド画面
 VOID EndProc(VOID);			//エンド画面(処理)
 VOID EndDraw(VOID);			//エンド画面(描画)
+
+VOID GameOver(VOID);		//ゲームオーバー画面
+VOID GameOverProc(VOID);		//ゲームオーバー画面(処理)
+VOID GameOverDraw(VOID);		//ゲームオーバー画面(描画)
 
 VOID Change(VOID);			//切り替え画面
 VOID ChangeProc(VOID);		//切り替え画面(処理)
@@ -205,6 +214,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		case GAME_SCENE_END:
 			End();				//エンド画面
 			break;
+		case GAME_SCENE_GAMEOVER:
+			GameOver();			//ゲームオーバー画面
+			break;
 		case GAME_SCENE_CHANGE:
 			Change();			//切り替え画面
 			break;
@@ -237,14 +249,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	DeleteGraph(playMovie.handle);	//画像をメモリから削除
 	DeleteGraph(player.img.handle);		//画像をメモリ上から削除
 	DeleteGraph(Goal.img.handle);		//画像をメモリ上から削除
+	DeleteGraph(ENEMY.img.handle);		//画像をメモリ上から削除
 
 	DeleteGraph(TitleLogo.handle);		//画像をメモリ上から削除
 	DeleteGraph(TitleEnter.handle);		//画像をメモリ上から削除
 	DeleteGraph(EndClear.handle);		//画像をメモリ上から削除
+	DeleteGraph(EndOver.handle);		//画像をメモリ上から削除
 
 	DeleteSoundMem(TitleBGM.handle);	//音楽をメモリ上から削除
 	DeleteSoundMem(PlayBGM.handle);		//音楽をメモリ上から削除
 	DeleteSoundMem(EndBGM.handle);		//音楽をメモリ上から削除
+	DeleteSoundMem(GameOverBGM.handle);	//音楽をメモリ上から削除
 
 	DeleteSoundMem(playerSE.handle);	//音楽をメモリ上から削除
 		
@@ -285,16 +300,19 @@ BOOL GameLoad() {
 	//画像を読み込み
 	if (!LoadImageMem(&player.img, ".\\image\\Player.png")) { return FALSE; }
 	if (!LoadImageMem(&Goal.img, ".\\image\\goal.png")) { return FALSE; }
+	if (!LoadImageMem(&ENEMY.img, ".\\image\\ENEMY.png")) { return FALSE; }
 
 	//ロゴを読み込む
 	if (!LoadImageMem(&TitleLogo, ".\\image\\タイトルロゴ.png")) { return FALSE; }
 	if (!LoadImageMem(&TitleEnter, ".\\image\\プッシュエンター.png")) { return FALSE; }
 	if (!LoadImageMem(&EndClear, ".\\image\\ゲームクリア.png")) { return FALSE; }
+	if (!LoadImageMem(&EndOver, ".\\image\\ゲームオーバー.png")) { return FALSE; }
 
 	//音楽の読み込み
-		if (!LoadAudio(&TitleBGM, ".\\Audio\\TitleBgm.mp3", 255, DX_PLAYTYPE_LOOP)) { return FALSE; }
+	if (!LoadAudio(&TitleBGM, ".\\Audio\\TitleBgm.mp3", 255, DX_PLAYTYPE_LOOP)) { return FALSE; }
 	if (!LoadAudio(&PlayBGM, ".\\Audio\\PlayBgm.mp3", 255, DX_PLAYTYPE_LOOP)) { return FALSE; }
 	if (!LoadAudio(&EndBGM, ".\\Audio\\EndBgm.mp3", 255, DX_PLAYTYPE_LOOP)) { return FALSE; }
+	if (!LoadAudio(&GameOverBGM, ".\\Audio\\GameOverBgm.mp3", 255, DX_PLAYTYPE_LOOP)) { return FALSE; }
 
 	if (!LoadAudio(&playerSE, ".\\Audio\\PlayerSE.mp3", 255, DX_PLAYTYPE_BACK)) { return FALSE; }
 
@@ -380,11 +398,18 @@ VOID GameInit(VOID)
 	//ゴールを初期化
 	Goal.img.x = GAME_WIDTH - Goal.img.width;		//中央寄せ
 	Goal.img.y = 0;		//中央寄せ
-	Goal.speed = 500;
 	Goal.img.IsDraw = TRUE;	//描画できる！
 
 	//当たり判定を更新する
 	CollUpdate(&Goal);		//ゴールの当たり判定のアドレス
+							
+	//敵を初期化
+	ENEMY.img.x = GAME_WIDTH - ENEMY.img.width;		//中央寄せ
+	ENEMY.img.y = GAME_HEIGHT- ENEMY.img.height;		//中央寄せ
+	ENEMY.img.IsDraw = TRUE;	//描画できる！
+
+	//当たり判定を更新する
+	CollUpdate(&ENEMY);		//ゲームオーバーの当たり判定のアドレス
 
 	//タイトルロゴの位置を決める
 	TitleLogo.x = GAME_WIDTH / 2 - TitleLogo.width / 2;	//中央揃え
@@ -402,6 +427,10 @@ VOID GameInit(VOID)
 	//クリアロゴの位置を決める
 	EndClear.x = GAME_WIDTH / 2 - EndClear.width / 2;	//中央揃え
 	EndClear.y = GAME_HEIGHT / 2 - EndClear.height / 2;	//中央揃え
+														
+	//ゲームオーバーの位置を決める
+	EndOver.x = GAME_WIDTH / 2 - EndOver.width / 2;	//中央揃え
+	EndOver.y = GAME_HEIGHT / 2 - EndOver.height / 2;	//中央揃え
 }
 
 /// <summary>
@@ -551,6 +580,18 @@ VOID PlayProc(VOID)
 		return;
 	}
 
+	//プレイヤーが敵に当たったときは
+	if (Collision(player.coll, ENEMY.coll) == TRUE) {
+		//BGMを止める
+		StopSoundMem(PlayBGM.handle);
+
+		//ゲームオーバー画面に切り替え
+		ChangeScene(GAME_SCENE_GAMEOVER);
+
+		//処理を強制終了
+		return;
+	}
+
 	//プレイヤーの操作
 	if (KeyDown(KEY_INPUT_UP) == TRUE)
 	{
@@ -600,6 +641,9 @@ VOID PlayProc(VOID)
 	//ゴールの当たり判定を更新する
 	CollUpdate(&Goal);
 
+	//敵の当たり判定を更新する
+	CollUpdate(&ENEMY);
+
 	return;
 }
 
@@ -635,18 +679,32 @@ VOID PlayDraw(VOID)
 	}
 
 	//ゴールを描画
-		if (Goal.img.IsDraw == TRUE)
-		{
-			//画像を描画
-			DrawGraph(Goal.img.x, Goal.img.y, Goal.img.handle, TRUE);
+	if (Goal.img.IsDraw == TRUE)
+	{
+		//画像を描画
+		DrawGraph(Goal.img.x, Goal.img.y, Goal.img.handle, TRUE);
 
-			//デバックのときは、当たり判定の領域を描画
-			if (GAME_DEBUG == TRUE)
-			{
-				//四角を描画
-				DrawBox(Goal.coll.left, Goal.coll.top, Goal.coll.right, Goal.coll.bottom, GetColor(255, 0, 0), FALSE);
-			}
+		//デバックのときは、当たり判定の領域を描画
+		if (GAME_DEBUG == TRUE)
+		{
+			//四角を描画
+			DrawBox(Goal.coll.left, Goal.coll.top, Goal.coll.right, Goal.coll.bottom, GetColor(255, 0, 0), FALSE);
 		}
+	}
+
+	//敵を描画
+	if (ENEMY.img.IsDraw == TRUE)
+	{
+		//画像を描画
+		DrawGraph(ENEMY.img.x, ENEMY.img.y, ENEMY.img.handle, TRUE);
+
+		//デバックのときは、当たり判定の領域を描画
+		if (GAME_DEBUG == TRUE)
+		{
+			//四角を描画
+			DrawBox(ENEMY.coll.left, ENEMY.coll.top, ENEMY.coll.right, ENEMY.coll.bottom, GetColor(255, 0, 0), FALSE);
+		}
+	}
 
 	DrawString(0, 0, "プレイ画面", GetColor(0, 0, 0));
 	return;
@@ -701,6 +759,58 @@ VOID EndDraw(VOID)
 	DrawGraph(EndClear.x, EndClear.y, EndClear.handle, TRUE);
 
 	DrawString(0, 0, "エンド画面", GetColor(0, 0, 0));
+	return;
+}
+
+/// <summary>
+/// ゲームオーバー画面
+/// </summary>
+VOID GameOver(VOID)
+{
+	GameOverProc();	//処理
+	GameOverDraw();	//描画
+
+	return;
+}
+
+/// <summary>
+/// ゲームオーバー画面の処理
+/// </summary>
+VOID GameOverProc(VOID)
+{
+	if (KeyClick(KEY_INPUT_RETURN) == TRUE)
+	{
+		//シーン切り替え
+		//次のシーンの初期化をここで行うと楽
+
+		//BGMを止める
+		StopSoundMem(GameOverBGM.handle);
+
+		//タイトル画面に切り替え
+		ChangeScene(GAME_SCENE_TITLE);
+
+		return;
+	}
+
+	//BGMが流れていないとき
+	if (CheckSoundMem(GameOverBGM.handle) == 0)
+	{
+		//BGMを流す
+		PlaySoundMem(GameOverBGM.handle, GameOverBGM.playType);
+	}
+
+	return;
+}
+
+/// <summary>
+/// ゲームオーバー画面の描画
+/// </summary>
+VOID GameOverDraw(VOID)
+{
+	//EndOverの描画
+	DrawGraph(EndOver.x, EndOver.y, EndOver.handle, TRUE);
+
+	DrawString(0, 0, "ゲームオーバー画面", GetColor(0, 0, 0));
 	return;
 }
 
@@ -779,6 +889,9 @@ VOID ChangeDraw(VOID)
 		break;
 	case GAME_SCENE_END:
 		EndDraw();			//エンド画面の描画
+		break;
+	case GAME_SCENE_GAMEOVER:
+		GameOverDraw();			//エンド画面の描画
 		break;
 	default:
 		break;
